@@ -30,6 +30,7 @@ export default async function handler(req, res) {
     .from('appointments')
     .select('*')
     .eq('status', 'confirmed')
+    console.log('user_id:', appt.user_id, 'subs:', subs?.length)
     .in('appointment_date', [fmt(in24h), fmt(in2h)])
 
   const results = []

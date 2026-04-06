@@ -1,9 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
-import crypto from 'crypto'
+import webpush from 'web-push'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
+)
+
+webpush.setVapidDetails(
+  process.env.VAPID_EMAIL,
+  process.env.VITE_VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
 )
 
 export default async function handler(req, res) {
@@ -33,7 +39,23 @@ export default async function handler(req, res) {
       .select('subscription')
       .eq('user_id', appt.user_id)
 
-    results.push({ appt: appt.id, subs: subs?.length, is24, is2 })
+    for (const { subscription } of subs || []) {
+      try {
+        await webpush.sendNotification(
+          subscription,
+          JSON.stringify({
+            title: 'Clocks Estudio Barbería',
+            body: is24
+              ? `Recuerda: tienes cita mañana a las ${apptTime}h`
+              : `Tu cita es en 2 horas, a las ${apptTime}h`,
+            url: '/'
+          })
+        )
+        results.push({ appt: appt.id, status: 'sent' })
+      } catch (e) {
+        results.push({ appt: appt.id, status: 'error', error: e.message })
+      }
+    }
   }
 
   res.json({ ok: true, checked: appts?.length, results })

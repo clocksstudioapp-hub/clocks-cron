@@ -30,7 +30,6 @@ export default async function handler(req, res) {
     .from('appointments')
     .select('*')
     .eq('status', 'confirmed')
-    console.log('user_id:', appt.user_id, 'subs:', subs?.length)
     .in('appointment_date', [fmt(in24h), fmt(in2h)])
 
   const results = []
@@ -44,7 +43,15 @@ export default async function handler(req, res) {
       .from('push_subscriptions')
       .select('subscription')
       .eq('user_id', appt.user_id)
-
+      for (const appt of appts || []) {
+    const is24 = inRange(appt.appointment_date, appt.appointment_time, in24h)
+    const is2 = inRange(appt.appointment_date, appt.appointment_time, in2h)
+    if (!is24 && !is2) continue
+    const { data: subs } = await supabase
+      .from('push_subscriptions')
+      .select('subscription')
+      .eq('user_id', appt.user_id)
+    console.log('user_id:', appt.user_id, 'subs:', subs?.length)
     for (const { subscription } of subs || []) {
       try {
         await webpush.sendNotification(
